@@ -32,12 +32,15 @@ group PUBLICEREN
     Alice -> Registrator_XIS : register consent
     group Authorization registration
       group IF explicit consent
-        Registrator_XIS -> Client : request signing of consent
-        Client -> Registrator_XIS : IRMA-signature
+        Registrator_XIS -> Knooppunt_Bron : client authentication
+        Registrator_XIS <- Knooppunt_Bron : authentication challenge
+        Registrator_XIS -> Client : Show QR-code
+        Client -> Knooppunt_Bron: sign authentication
+        Knooppunt_Bron -> Registrator_XIS : <<client-authn-contract>>
       end
-      Registrator_XIS -> Knooppunt_Bron : register authorization
+      Registrator_XIS -> Knooppunt_Bron : register authorization <<client-authn-contract>>
       Registrator_XIS <- Knooppunt_Bron : ok
-      Knooppunt_Bron -> Knooppunt_Afn : sync authorizations between relevant nodes
+      Knooppunt_Bron -> Knooppunt_Afn : sync authorizations
     end
   end
 end
@@ -45,14 +48,14 @@ end
 group RAADPLEGEN
   group user authentication
     Bob -> Requestor_XIS : inloggen
-    Requestor_XIS -> Viewer: SSO <<BSN, local_user_id>>
+    Requestor_XIS -> Viewer: SSO\n <<BSN,\nuser_id>>
     Viewer -> Knooppunt_Afn : user authentication
     Knooppunt_Afn -> Viewer : authentication challenge
     Viewer -> Bob : Show QR-code
     Bob -> Knooppunt_Afn: sign authentication
-    Knooppunt_Afn -> Viewer : <<Signed authn-contract>>
+    Knooppunt_Afn -> Viewer : <<authn-contract>>
   end
-  Viewer -> Query_Builder : start <BSN, Signed authn-contract>>
+  Viewer -> Query_Builder : start\n<BSN,\nauthn-contract>>
 
   group endpoint localisation and authorization
     Query_Builder -> Knooppunt_Afn : find FHIR endpoints
@@ -60,7 +63,7 @@ group RAADPLEGEN
     
     loop FOR EACH Bron
     Query_Builder -> Knooppunt_Afn : request access_token
-    Knooppunt_Afn -> Knooppunt_Bron : request access token <<JWT-grant>>
+    Knooppunt_Afn -> Knooppunt_Bron : request access token\n<<JWT-grant>>
     Knooppunt_Afn <- Knooppunt_Bron: access token
     Query_Builder <- Knooppunt_Afn : access token
     end
@@ -73,12 +76,12 @@ group RAADPLEGEN
       Resource_Server <- Knooppunt_Bron: ok
       Query_Builder <- Resource_Server : FHIR resource
     end
-    Query_Builder -> Translator: request translation of FHIR/SNOMED
+    Query_Builder -> Translator: request translation\nof FHIR/SNOMED
     Query_Builder <- Translator: translated resources
     Query_Builder --> Viewer: translated resources
   end
   Viewer -> Viewer : generate view
   Viewer -> Bob: present view
-  Bob -> Bob: Be happy!
+  Bob -> Bob: enjoy view!
 end
 @enduml
