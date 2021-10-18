@@ -1,0 +1,84 @@
+@startuml
+actor Client
+box "Bronhouder" #LightBlue
+actor Alice
+participant Registrator_XIS
+participant Extractor
+participant Convertor
+database Resource_Server
+participant Knooppunt_Bron
+end box
+
+box "Afnemer"
+participant Knooppunt_Afn
+participant Translator
+participant Query_Builder
+participant Viewer
+participant Requestor_XIS
+actor Bob
+end box
+
+group PUBLICEREN
+  Alice -> Registrator_XIS : log in
+  group register data and make data interoperable and accessible
+    Alice -> Registrator_XIS : register healthcare data
+    Registrator_XIS <- Extractor: pull healthcare data
+    Extractor -> Convertor: deliver healthcare data
+    Convertor -> Convertor : convert to FHIR
+    Convertor -> Resource_Server : POST FHIR data
+  end
+
+  group make data findable
+    Alice -> Registrator_XIS : register consent
+    group Authorization registration
+      group IF explicit consent
+        Registrator_XIS -> Client : request signing of consent
+        Client -> Registrator_XIS : IRMA-signature
+      end
+      Registrator_XIS -> Knooppunt_Bron : register authorization
+      Registrator_XIS <- Knooppunt_Bron : ok
+      Knooppunt_Bron -> Knooppunt_Afn : sync authorizations between relevant nodes
+    end
+  end
+end
+
+group RAADPLEGEN
+  group user authentication
+    Bob -> Requestor_XIS : inloggen
+    Requestor_XIS -> Viewer: SSO <<BSN, local_user_id>>
+    Viewer -> Knooppunt_Afn : user authentication
+    Knooppunt_Afn -> Viewer : authentication challenge
+    Viewer -> Bob : Show QR-code
+    Bob -> Knooppunt_Afn: sign authentication
+    Knooppunt_Afn -> Viewer : <<Signed authn-contract>>
+  end
+  Viewer -> Query_Builder : start <BSN, Signed authn-contract>>
+
+  group endpoint localisation and authorization
+    Query_Builder -> Knooppunt_Afn : find FHIR endpoints
+    Query_Builder <- Knooppunt_Afn : <<FHIR endpoints>>
+    
+    loop FOR EACH Bron
+    Query_Builder -> Knooppunt_Afn : request access_token
+    Knooppunt_Afn -> Knooppunt_Bron : request access token <<JWT-grant>>
+    Knooppunt_Afn <- Knooppunt_Bron: access token
+    Query_Builder <- Knooppunt_Afn : access token
+    end
+  end 
+  
+  loop FOR EACH Bron
+    loop FOR EACH search url
+      Query_Builder -> Resource_Server : request FHIR-resource
+      Resource_Server -> Knooppunt_Bron: validate token
+      Resource_Server <- Knooppunt_Bron: ok
+      Query_Builder <- Resource_Server : FHIR resource
+    end
+    Query_Builder -> Translator: request translation of FHIR/SNOMED
+    Query_Builder <- Translator: translated resources
+    Query_Builder --> Viewer: translated resources
+  end
+  Viewer -> Viewer : generate view
+  Viewer -> Bob: present view
+  Bob -> Bob: Be happy!
+end
+@enduml
