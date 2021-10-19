@@ -1,0 +1,23 @@
+@startuml
+start
+floating note left: data is opgeslagen in astraia db
+fork
+  :export data from astraia;
+  floating note left: manual action by dev astraia
+  :send data to convertor;
+  floating note left: manual action by dev astraia
+  :convert data to fhir resources;
+  floating note left: simple conversion by headease,\nmapping def by bureau
+  :post fhir-resources to hapi fhir server;
+  floating note left: bundle?
+  #LightPink: data is Interoperable and Accessible;
+fork again
+  :post authz cred to nuts-node astraia;
+  floating note right: Mock-app headease (based on demo ehr Nuts)
+  :nuts-node astraia syncs with nuts-node requestor;
+  floating note right: standard functionality of nuts 
+  #LightBlue: data is Findable;
+end fork {and}
+  #LightGreen: data is FAIR;
+stop
+@enduml
