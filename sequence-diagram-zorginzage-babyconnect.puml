@@ -1,6 +1,5 @@
 @startuml
 autonumber
-actor Client
 box "Bronhouder" #LightBlue
 actor Practitioner_Alice
 participant Registrator_XIS
@@ -11,8 +10,7 @@ participant Knooppunt_Bron
 end box
 
 box "Nictiz/National" #LightPink
-database mapping_inforequest_to_searchurls
-database authz_role_to_searchurl
+database mapping_searchurls
 end box
 
 box "Afnemer"
@@ -27,15 +25,15 @@ end box
 group PUBLICEREN
   Practitioner_Alice -> Registrator_XIS : log in
   group register data and make data interoperable and accessible
-    Practitioner_Alice -> Registrator_XIS : register healthcare data
-    Registrator_XIS <- Extractor: pull healthcare data
-    Extractor -> Convertor: deliver healthcare data
+    Practitioner_Alice -> Registrator_XIS : register\nhealthcare data
+    Registrator_XIS <- Extractor: pull\nhealthcare data
+    Extractor -> Convertor: deliver\nhealthcare data
     Convertor -> Convertor : convert to FHIR
     Convertor -> Resource_Server : POST FHIR data
   end
 
   group make data findable
-    Practitioner_Alice -> Registrator_XIS : register specific consent
+    Practitioner_Alice -> Registrator_XIS : register\nspecific consent
     group Authorization registration
       Registrator_XIS -> Knooppunt_Bron : register authorization
       Registrator_XIS <- Knooppunt_Bron : ok
@@ -68,8 +66,8 @@ group RAADPLEGEN
     end
   end 
 
-  Query_Builder ->  mapping_inforequest_to_searchurls : get search-urls <<info request>>
-  Query_Builder <-  mapping_inforequest_to_searchurls : <<search-urls>>
+  Query_Builder ->  mapping_searchurls : get search-urls <<info request>>
+  Query_Builder <-  mapping_searchurls : <<search-urls>>
   
   loop FOR EACH Bron
     loop FOR EACH search url
@@ -78,8 +76,8 @@ group RAADPLEGEN
       Resource_Server <- Knooppunt_Bron: ok
       Query_Builder <- Resource_Server : FHIR resource
     end
-    Query_Builder -> Translator: request translation\nof FHIR/SNOMED
-    Query_Builder <- Translator: translated resources
+    Query_Builder -> Translator: request\ntranslation\nof FHIR/SNOMED
+    Query_Builder <- Translator: translated\nresources
     Query_Builder --> Viewer: translated resources
   end
   Viewer -> Viewer : generate view
