@@ -1,12 +1,18 @@
 @startuml
+autonumber
 actor Client
 box "Bronhouder" #LightBlue
-actor Alice
+actor Practitioner_Alice
 participant Registrator_XIS
 participant Extractor
 participant Convertor
 database Resource_Server
 participant Knooppunt_Bron
+end box
+
+box "Nictiz/National" #LightPink
+database mapping_inforequest_to_searchurls
+database authz_role_to_searchurl
 end box
 
 box "Afnemer"
@@ -15,13 +21,13 @@ participant Translator
 participant Query_Builder
 participant Viewer
 participant Requestor_XIS
-actor Bob
+actor Practitioner_Bob
 end box
 
 group PUBLICEREN
-  Alice -> Registrator_XIS : log in
+  Practitioner_Alice -> Registrator_XIS : log in
   group register data and make data interoperable and accessible
-    Alice -> Registrator_XIS : register healthcare data
+    Practitioner_Alice -> Registrator_XIS : register healthcare data
     Registrator_XIS <- Extractor: pull healthcare data
     Extractor -> Convertor: deliver healthcare data
     Convertor -> Convertor : convert to FHIR
@@ -29,16 +35,9 @@ group PUBLICEREN
   end
 
   group make data findable
-    Alice -> Registrator_XIS : register consent
+    Practitioner_Alice -> Registrator_XIS : register specific consent
     group Authorization registration
-      group IF explicit consent
-        Registrator_XIS -> Knooppunt_Bron : client authentication
-        Registrator_XIS <- Knooppunt_Bron : authentication challenge
-        Registrator_XIS -> Client : Show QR-code
-        Client -> Knooppunt_Bron: sign authentication
-        Knooppunt_Bron -> Registrator_XIS : <<client-authn-contract>>
-      end
-      Registrator_XIS -> Knooppunt_Bron : register authorization <<client-authn-contract>>
+      Registrator_XIS -> Knooppunt_Bron : register authorization
       Registrator_XIS <- Knooppunt_Bron : ok
       Knooppunt_Bron -> Knooppunt_Afn : sync authorizations
     end
@@ -47,16 +46,16 @@ end
 
 group RAADPLEGEN
   group user authentication
-    Bob -> Requestor_XIS : inloggen
+    Practitioner_Bob -> Requestor_XIS : inloggen
     Requestor_XIS -> Viewer: SSO\n <<BSN,\nuser_id>>
     Viewer -> Knooppunt_Afn : user authentication
     Knooppunt_Afn -> Viewer : authentication challenge
-    Viewer -> Bob : Show QR-code
-    Bob -> Knooppunt_Afn: sign authentication
+    Viewer -> Practitioner_Bob : Show QR-code
+    Practitioner_Bob -> Knooppunt_Afn: sign authentication
     Knooppunt_Afn -> Viewer : <<authn-contract>>
   end
-  Viewer -> Query_Builder : start\n<BSN,\nauthn-contract>>
-
+  Viewer -> Query_Builder : information request\n<<BSN,\nauthn-contract>>
+  
   group endpoint localisation and authorization
     Query_Builder -> Knooppunt_Afn : find FHIR endpoints
     Query_Builder <- Knooppunt_Afn : <<FHIR endpoints>>
@@ -68,10 +67,13 @@ group RAADPLEGEN
     Query_Builder <- Knooppunt_Afn : access token
     end
   end 
+
+  Query_Builder ->  mapping_inforequest_to_searchurls : get search-urls <<info request>>
+  Query_Builder <-  mapping_inforequest_to_searchurls : <<search-urls>>
   
   loop FOR EACH Bron
     loop FOR EACH search url
-      Query_Builder -> Resource_Server : request FHIR-resource
+      Query_Builder -> Resource_Server : request FHIR-resource\n<<access token>>
       Resource_Server -> Knooppunt_Bron: validate token
       Resource_Server <- Knooppunt_Bron: ok
       Query_Builder <- Resource_Server : FHIR resource
@@ -81,7 +83,7 @@ group RAADPLEGEN
     Query_Builder --> Viewer: translated resources
   end
   Viewer -> Viewer : generate view
-  Viewer -> Bob: present view
-  Bob -> Bob: enjoy view!
+  Viewer -> Practitioner_Bob: present view
+  Practitioner_Bob -> Practitioner_Bob: enjoy view!
 end
 @enduml
