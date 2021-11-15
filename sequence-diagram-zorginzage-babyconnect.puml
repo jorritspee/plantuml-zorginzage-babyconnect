@@ -22,24 +22,21 @@ participant Requestor_XIS
 actor Practitioner_Bob
 end box
 
-group PUBLICEREN
+group REGIE VOEREN (make data findable)
   Practitioner_Alice -> Registrator_XIS : log in
-  group register data and make data interoperable and accessible
-    Practitioner_Alice -> Registrator_XIS : register\nhealthcare data
-    Registrator_XIS <- Extractor: pull\nhealthcare data
-    Extractor -> Convertor: deliver\nhealthcare data
-    Convertor -> Convertor : convert to FHIR
-    Convertor -> Resource_Server : POST FHIR data
-  end
+  Practitioner_Alice -> Registrator_XIS : register\nspecific consent
+  Registrator_XIS -> Knooppunt_Bron : register authorization
+  Registrator_XIS <- Knooppunt_Bron : ok
+  Knooppunt_Bron -> Knooppunt_Afn : sync authorizations
+end group
 
-  group make data findable
-    Practitioner_Alice -> Registrator_XIS : register\nspecific consent
-    group Authorization registration
-      Registrator_XIS -> Knooppunt_Bron : register authorization
-      Registrator_XIS <- Knooppunt_Bron : ok
-      Knooppunt_Bron -> Knooppunt_Afn : sync authorizations
-    end
-  end
+group PUBLICEREN (register data and make data interoperable and accessible)
+  Practitioner_Alice -> Registrator_XIS : log in
+  Practitioner_Alice -> Registrator_XIS : register\nhealthcare data
+  Registrator_XIS <- Extractor: pull\nhealthcare data
+  Extractor -> Convertor: deliver\nhealthcare data
+  Convertor -> Convertor : convert to FHIR
+  Convertor -> Resource_Server : POST FHIR data
 end
 
 group RAADPLEGEN
