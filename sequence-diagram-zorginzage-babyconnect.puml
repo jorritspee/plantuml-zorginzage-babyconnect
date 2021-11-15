@@ -55,6 +55,8 @@ group RAADPLEGEN
   Viewer -> Query_Builder : information request\n<<BSN,\nauthn-contract>>
   
   group endpoint localisation and authorization
+    Query_Builder -> Knooppunt_Afn : get Bronhouders/ authz credentials <<bsn>>
+    Query_Builder <- Knooppunt_Afn : <<DID's of Bronhouders>>
     Query_Builder -> Knooppunt_Afn : find FHIR endpoints
     Query_Builder <- Knooppunt_Afn : <<FHIR endpoints>>
     
@@ -74,6 +76,7 @@ group RAADPLEGEN
       Query_Builder -> Resource_Server : request FHIR-resource\n<<access token>>
       Resource_Server -> Knooppunt_Bron: validate token
       Resource_Server <- Knooppunt_Bron: ok
+      Resource_Server -> Resource_Server: apply access policy
       Query_Builder <- Resource_Server : FHIR resource
     end
     Query_Builder -> Translator: request\ntranslation\nof FHIR/SNOMED
