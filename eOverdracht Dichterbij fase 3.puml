@@ -1,0 +1,58 @@
+@startuml
+actor ZWC_mdw_verzender #lightblue
+participant ECD_verzender #lightblue
+participant ESB_verzender #lightblue
+participant POINT_verzender #lightblue
+participant Nuts_node_verzender #lightblue
+
+participant Nuts_node_ontvanger #lightpink
+participant POINT_ontvanger #lightpink
+participant ESB_ontvanger #lightpink
+participant ECD_ontvanger #lightpink
+actor ZWC_mdw_ontvanger #lightpink
+
+autonumber
+
+group 3 Tonen Zibs en beoordelen
+  POINT_ontvanger -> POINT_ontvanger: receive case
+  POINT_ontvanger -> ZWC_mdw_ontvanger: send notification mail
+  POINT_ontvanger -> ESB_ontvanger: PUT Task-resource \nwith updated status\n'case in inbox'
+  ESB_ontvanger -> ECD_ontvanger: Forward PUT\nof Task-resource
+  ECD_ontvanger --> ECD_ontvanger: update Task
+  POINT_ontvanger -> POINT_verzender: request zibs
+  POINT_verzender -> ESB_verzender: request zibs
+  ESB_verzender -> ECD_verzender: request zibs
+  ECD_verzender -> ESB_verzender: FHIR-resources
+  ESB_verzender -> POINT_verzender: FHIR-resources
+  POINT_verzender -> POINT_ontvanger: FHIR-resources
+  POINT_ontvanger -> POINT_ontvanger: beoordelen verzoek
+  
+  alt verzoek '1A in beoordeling'
+    POINT_ontvanger -> POINT_verzender: PUT Task-resource \nwith updated status\n'on hold'
+    POINT_verzender -> ESB_verzender: Forward PUT Task
+    ESB_verzender -> ECD_verzender: Forward PUT Task
+    ECD_verzender -> ECD_verzender: update Task
+    POINT_ontvanger -> ESB_ontvanger: PUT Task-resource \nwith updated status\n'on hold'
+    ESB_ontvanger -> ECD_ontvanger: Forward PUT\nof Task-resource
+    ECD_ontvanger --> ECD_ontvanger: update Task
+    group fase 'create patient in ecd as input for 1B bemiddelen en plaatsen'
+      ECD_ontvanger -> ESB_ontvanger: request fhir-resources
+      ESB_ontvanger -> POINT_ontvanger: request fhir-resources
+      POINT_ontvanger -> POINT_verzender: request fhir-resources
+      POINT_verzender -> ESB_verzender: request fhir-resources
+      ESB_verzender -> ECD_verzender: request fhir-resources
+      ECD_verzender -> ESB_verzender: fhir-resources
+      ESB_verzender -> POINT_verzender: fhir-resources
+      POINT_verzender -> POINT_ontvanger: fhir-resources
+      POINT_ontvanger -> ESB_ontvanger: fhir-resources
+      ESB_ontvanger -> ECD_ontvanger: fhir resources
+    end group
+  else verzoek rejected
+    POINT_ontvanger -> POINT_verzender: PUT Task-resource \nwith updated status\n'rejected'
+    POINT_verzender -> ESB_verzender: Forward PUT Task
+    ESB_verzender -> ECD_verzender: Forward PUT Task
+    ECD_verzender -> ECD_verzender: update Task
+  end
+
+end group
+@enduml
