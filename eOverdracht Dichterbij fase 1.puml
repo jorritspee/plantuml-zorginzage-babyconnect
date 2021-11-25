@@ -1,0 +1,41 @@
+@startuml
+actor ZWC_mdw_verzender #lightblue
+participant ECD_verzender #lightblue
+participant ESB_verzender #lightblue
+participant POINT_verzender #lightblue
+participant Nuts_node_verzender #lightblue
+
+participant Nuts_node_ontvanger #lightpink
+participant POINT_ontvanger #lightpink
+participant ESB_ontvanger #lightpink
+participant ECD_ontvanger #lightpink
+actor ZWC_mdw_ontvanger #lightpink
+
+autonumber
+
+ZWC_mdw_verzender -> ECD_verzender: login
+ECD_verzender -> ECD_verzender: Create zibs/fhir-resources
+group 1 Start eOverdracht
+  ECD_verzender -> ECD_verzender: Request start eOverdracht
+  ECD_verzender -> ECD_verzender: present available zibs
+  ECD_verzender -> ECD_verzender: user checks zibs
+  alt zibs not complete
+    ECD_verzender -> ECD_verzender: fix manually or overrule
+  end
+  
+  ECD_verzender -> ECD_verzender: create Task \n<<client id, case id, receivingorg id>>
+  
+  opt create case by notification
+    ECD_verzender -> ESB_verzender: Notification \n<<client id, case id>>
+    ESB_verzender -> POINT_verzender: Forward Notification \n<<client id, case id>>
+    POINT_verzender -> POINT_verzender: Create unstarted case \n(werkbriefje)
+  end
+  ECD_verzender -> POINT_verzender: SSO <<client id, case id>> (user authn by ecd)
+  POINT_verzender -> POINT_verzender: create case (if necessary)
+  POINT_verzender -> POINT_verzender: start case
+  POINT_verzender --> ESB_verzender: PUT Task-resource \nwith updated status\n'started internally'
+  ESB_verzender --> ECD_verzender: forward PUT of Task-resource
+  ECD_verzender --> ECD_verzender: update Task
+end group
+
+@enduml
