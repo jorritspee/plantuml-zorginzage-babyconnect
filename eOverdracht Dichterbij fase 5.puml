@@ -14,7 +14,6 @@ actor ZWC_mdw_ontvanger #lightpink
 autonumber
 
 group 5 Overdracht en afronding
-  
   group haal meest actuele gegevens op
     ECD_ontvanger -> ESB_ontvanger: request fhir-resources
     ESB_ontvanger -> POINT_ontvanger: request fhir-resources
@@ -41,6 +40,6 @@ group 5 Overdracht en afronding
     POINT_verzender -> ESB_verzender: Forward PUT Task
     ESB_verzender -> ECD_verzender: Forward PUT Task
     ECD_verzender -> ECD_verzender: update Task
-
+  end
 end group
 @enduml
