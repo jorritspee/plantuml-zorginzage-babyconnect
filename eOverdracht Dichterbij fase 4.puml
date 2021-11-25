@@ -1,0 +1,53 @@
+@startuml
+actor ZWC_mdw_verzender #lightblue
+participant ECD_verzender #lightblue
+participant ESB_verzender #lightblue
+participant POINT_verzender #lightblue
+participant Nuts_node_verzender #lightblue
+
+participant Nuts_node_ontvanger #lightpink
+participant POINT_ontvanger #lightpink
+participant ESB_ontvanger #lightpink
+participant ECD_ontvanger #lightpink
+actor ZWC_mdw_ontvanger #lightpink
+
+autonumber
+
+group 4 Bemiddelen en plaatsen
+  
+  group fase 'create patient in ecd as input for 1B bemiddelen en plaatsen'
+    ECD_ontvanger -> ESB_ontvanger: request fhir-resources
+    ESB_ontvanger -> POINT_ontvanger: request fhir-resources
+    POINT_ontvanger -> Nuts_node_ontvanger: request access token
+    Nuts_node_ontvanger -> POINT_ontvanger: access token
+    POINT_ontvanger -> POINT_verzender: request fhir-resources
+    POINT_verzender -> Nuts_node_verzender: introspect access token
+    Nuts_node_verzender -> POINT_verzender: token ok
+    POINT_verzender -> ESB_verzender: request fhir-resources
+    ESB_verzender -> ECD_verzender: request fhir-resources
+    ECD_verzender -> ESB_verzender: fhir-resources
+    ESB_verzender -> POINT_verzender: fhir-resources
+    POINT_verzender -> POINT_ontvanger: fhir-resources
+    POINT_ontvanger -> ESB_ontvanger: fhir-resources
+    ESB_ontvanger -> ECD_ontvanger: fhir resources
+  end group
+
+  ECD_ontvanger -> ECD_ontvanger: bemiddelen
+  
+  alt 'komt in zorg'
+    ECD_ontvanger -> POINT_ontvanger: PUT Task-resource \nwith updated status\n'accepted'
+    POINT_ontvanger -> POINT_verzender: PUT Task-resource \nwith updated status\n'accepted'
+    POINT_verzender -> ESB_verzender: Forward PUT Task
+    ESB_verzender -> ECD_verzender: Forward PUT Task
+    ECD_verzender -> ECD_verzender: update Task
+
+  else 'afwijzen'
+    ECD_ontvanger -> POINT_ontvanger: PUT Task-resource \nwith updated status\n'rejected'
+    POINT_ontvanger -> POINT_verzender: PUT Task-resource \nwith updated status\n'rejected'
+    POINT_verzender -> ESB_verzender: Forward PUT Task
+    ESB_verzender -> ECD_verzender: Forward PUT Task
+    ECD_verzender -> ECD_verzender: update Task
+  end
+
+end group
+@enduml
