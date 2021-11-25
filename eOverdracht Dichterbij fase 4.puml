@@ -34,20 +34,23 @@ group 4 Bemiddelen en plaatsen
 
   ECD_ontvanger -> ECD_ontvanger: bemiddelen
   
-  alt 'komt in zorg'
+  alt 'komt nu in zorg'
     ECD_ontvanger -> POINT_ontvanger: PUT Task-resource \nwith updated status\n'accepted'
-    POINT_ontvanger -> POINT_verzender: PUT Task-resource \nwith updated status\n'accepted'
-    POINT_verzender -> ESB_verzender: Forward PUT Task
-    ESB_verzender -> ECD_verzender: Forward PUT Task
-    ECD_verzender -> ECD_verzender: update Task
+
+  else 'komt in zorg op bekende toekomstige datum'
+    ECD_ontvanger -> POINT_ontvanger: PUT Task-resource \nwith updated status\n'accepted' and output:alternativeDate = <<date>>
+
+  else 'komt in zorg maar 1st op wachtlijst'
+    ECD_ontvanger -> POINT_ontvanger: PUT Task-resource \nwith updated status\n'accepted' and output:alternativeDate = 'WACHTLIJST'
 
   else 'afwijzen'
     ECD_ontvanger -> POINT_ontvanger: PUT Task-resource \nwith updated status\n'rejected'
-    POINT_ontvanger -> POINT_verzender: PUT Task-resource \nwith updated status\n'rejected'
-    POINT_verzender -> ESB_verzender: Forward PUT Task
-    ESB_verzender -> ECD_verzender: Forward PUT Task
-    ECD_verzender -> ECD_verzender: update Task
   end
+
+  POINT_ontvanger -> POINT_verzender: Forward PUT Task
+  POINT_verzender -> ESB_verzender: Forward PUT Task
+  ESB_verzender -> ECD_verzender: Forward PUT Task
+  ECD_verzender -> ECD_verzender: update Task
 
 end group
 @enduml
