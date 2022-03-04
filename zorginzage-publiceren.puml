@@ -1,0 +1,22 @@
+@startuml
+autonumber
+box "Bronhouder"
+actor Practitioner_Bob
+participant Custodian_System
+participant Custodian_Node
+end box
+
+box "Afnemer"
+participant Actor_Node
+participant Actor_System
+actor Practitioner_Alice
+end box
+
+group "Registreren autorisatie"
+  Practitioner_Bob -> Custodian_System : log in
+  Practitioner_Bob -> Custodian_System : register consent (explicit or implicit)
+  Custodian_System -> Custodian_Node : register authorization
+  Custodian_System <- Custodian_Node : ok
+  Custodian_Node -> Actor_Node : sync authorization
+end group
+@enduml
