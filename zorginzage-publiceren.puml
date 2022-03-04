@@ -1,12 +1,12 @@
 @startuml
 autonumber
-box "Bronhouder"
+box "Custodian = Bronhouder" #lightblue
 actor Practitioner_Bob
 participant Custodian_System
 participant Custodian_Node
 end box
 
-box "Afnemer"
+box "Actor = Afnemer" #lightyellow
 participant Actor_Node
 participant Actor_System
 actor Practitioner_Alice
