@@ -1,0 +1,51 @@
+@startuml
+autonumber
+box "Custodian = Bronhouder" #lightblue
+actor Practitioner_Bob
+participant Custodian_System
+participant Custodian_Node
+end box
+
+box "Actor = Afnemer" #lightyellow
+participant Actor_Node
+participant Actor_System
+actor Practitioner_Alice
+end box
+
+group user authentication
+  Practitioner_Alice -> Actor_System : Start
+  Actor_System -> Actor_Node: Authn
+  Actor_Node -> Actor_System : Authn challenge
+  Actor_System -> Practitioner_Alice : Show QR-code
+  Practitioner_Alice -> Actor_Node: Sign authn
+  Actor_Node -> Actor_System : <<authn-contract>>
+end
+
+group get authorization records, endpoints and access tokens
+  Actor_System -> Actor_Node : get authorization records\n<<bsn, identifier Actor, identifier purposeOfUse>>
+  Actor_Node -> Actor_System : <<authz credentials incl\nidentifiers Custodians and search url's>>
+  
+  loop FOR EACH Authz credential
+    Actor_System -> Actor_Node : find FHIR endpoint <<identifer Custodian>>
+    Actor_Node -> Actor_System : <<FHIR endpoint Custodian>>
+    Actor_System -> Actor_Node : request access_token\n<<authz credential, authn-contract,\nidentifier purposeOfUse>>
+    Actor_Node -> Custodian_Node : request access token\n<<JWT-grant>>
+    Custodian_Node -> Actor_Node: access token
+    Actor_Node -> Actor_System : access token
+  end
+end
+
+group data retrievel
+  loop FOR EACH Authz credential
+    loop FOR EACH search url
+      Actor_System -> Custodian_System : request FHIR-resource\n<<access token>>
+      Custodian_System -> Custodian_Node: validate token <<access token>>
+      Custodian_Node -> Custodian_System: ok
+      Custodian_System -> Custodian_System: apply access policy
+      Custodian_System -> Actor_System : <<FHIR resource(s)>>
+    end
+  end
+  Actor_System -> Actor_System: generate view
+  Actor_System -> Practitioner_Alice : Show
+end
+@enduml
