@@ -25,10 +25,10 @@ group get authorization records, endpoints and access tokens
   Actor_System -> Actor_Node : get authorization records\n<<bsn, identifier Actor, identifier purposeOfUse>>
   Actor_Node -> Actor_System : <<authz credentials incl\nidentifiers Custodians and search url's>>
   
-  loop FOR EACH Authz credential
+  loop FOR EACH Custodian
     Actor_System -> Actor_Node : find FHIR endpoint <<identifer Custodian>>
     Actor_Node -> Actor_System : <<FHIR endpoint Custodian>>
-    Actor_System -> Actor_Node : request access_token\n<<authz credential, authn-contract,\nidentifier purposeOfUse>>
+    Actor_System -> Actor_Node : request access_token\n<<authz credential(s), authn-contract,\nidentifier purposeOfUse>>
     Actor_Node -> Custodian_Node : request access token\n<<JWT-grant>>
     Custodian_Node -> Actor_Node: access token
     Actor_Node -> Actor_System : access token
@@ -36,7 +36,7 @@ group get authorization records, endpoints and access tokens
 end
 
 group data retrievel
-  loop FOR EACH Authz credential
+  loop FOR EACH Custodian
     loop FOR EACH search url
       Actor_System -> Custodian_System : request FHIR-resource\n<<access token>>
       Custodian_System -> Custodian_Node: validate token <<access token>>
