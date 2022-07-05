@@ -1,0 +1,106 @@
+@startuml
+autonumber
+skinparam ParticipantPadding 30
+skinparam BoxPadding 20
+
+Box Sender
+  actor Alice
+  participant "Sender System" as Sender
+  participant SenderNode
+end box
+Box Receiver
+  participant ReceiverNode
+  participant "Receiving System" as Receiver
+  actor Bob
+end box
+
+Alice --> Sender: start
+activate Sender
+group "authorization registration"
+  Sender -> SenderNode: Register bgz authorization record (sender id, receiver id, bsn)
+  SenderNode --> Sender: Ok
+  SenderNode -> ReceiverNode: sync authorizations
+end
+
+group "Notify"
+  Sender -> SenderNode: Find Task notify endpoint (receiver id)
+  SenderNode -> Sender: <<Endpoint>>
+  Sender -> SenderNode: Request accessToken (no params because public endpoint)
+  SenderNode -> ReceiverNode:Request accessToken <<jwt-grant>>
+  ReceiverNode -> SenderNode: <<accessToken incl id sender>>
+  SenderNode -> Sender: <<accessToken incl id sender>>
+  Sender -> Receiver: Notify
+  Receiver -> ReceiverNode: Validate <<accessToken>>
+  ReceiverNode --> Receiver: Ok
+  Receiver --> Sender: Ok
+  deactivate Sender
+end
+
+group "Retrieve Task"
+  group "Endpoint authorization"
+    Receiver -> ReceiverNode: Find FHIR endpoint (sender id)
+    activate Receiver
+    ReceiverNode -> Receiver: <<Endpoint>>
+    Receiver -> ReceiverNode: Request accessToken (authz record)
+    ReceiverNode -> SenderNode: Request AccessToken <<jwt-grant>>
+    SenderNode -> ReceiverNode: <<accessToken>>
+    ReceiverNode -> Receiver: <<accessToken>>
+  end
+  Receiver -> Sender: GET Task <<accessToken>>
+  Sender -> SenderNode: Validate <<accessToken>>
+  SenderNode --> Sender: Ok
+  Sender -> Receiver: <<task>>
+  Receiver --> Bob: Notify enduser
+  deactivate Receiver
+end
+
+group "Sign user authn contract"
+  Bob --> Receiver: start
+  activate Bob
+  activate Receiver
+  Receiver -> ReceiverNode: Auth
+  ReceiverNode -> Receiver: Auth challenge
+  Receiver -> Bob: Show QR code
+  Bob -> ReceiverNode: Sign Auth
+  deactivate Bob
+  ReceiverNode -> Receiver: <<Signed contract>>
+end
+
+group "Retrieve BgZ"
+  group "Endpoint authorization"
+   Receiver <-> SenderNode: Steps 15-20
+  end
+  Receiver -> Sender: request BgZ FHIR-resources <<accessToken>>
+  activate Sender
+  Sender -> SenderNode: validate
+  SenderNode -> Sender: <<authorized resources>>
+  Sender -> Sender: Requested resources in authorized resources?
+  Sender -> Receiver: <<requested authorized BgZ resources>>
+  deactivate Sender
+  Receiver --> Bob: Show
+  deactivate Receiver
+end
+
+group "Complete verwijzing"
+  Bob --> Receiver: complete
+  activate Receiver
+  group "Endpoint authorization"
+    Receiver <-> SenderNode: steps 15-20
+  end
+  Receiver -> Sender: update Task <<accessToken>>
+  activate Sender
+  Sender -> SenderNode: validate
+  SenderNode -> Sender: <<authorized resources>>
+  Sender -> Sender: Task in authorized resources?
+  Sender -> Sender: update Task
+  Sender --> Receiver: Ok
+  deactivate Receiver
+  Sender -> SenderNode: revoke BgZ authorization
+  SenderNode --> Sender: Ok
+  SenderNode -> ReceiverNode: sync authorizations
+  group "Notify"
+    Sender -> Receiver: steps 5-14
+  end
+  deactivate Sender
+end
+@enduml
