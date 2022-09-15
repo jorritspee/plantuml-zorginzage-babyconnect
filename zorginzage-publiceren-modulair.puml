@@ -1,0 +1,35 @@
+@startuml
+autonumber
+box Bronhouder #lightblue
+actor Practitioner_Bob
+participant xis as epd
+participant convertor
+participant lokale_grondslagregistratie as lokgrond
+participant Resource_Server as RS
+participant AAA_Proxy as proxy
+participant Custodian_Node
+end box
+
+box Afnemer #lightyellow
+participant Actor_Node
+participant data_client
+participant Viewer
+actor Practitioner_Alice
+end box
+
+group "Prepareren data (niet specifiek voor Nuts)"
+  Practitioner_Bob -> epd : log in
+  Practitioner_Bob -> epd : register data
+  epd -> convertor: post data
+  convertor -> convertor: convert data to FHIR-resources
+  convertor -> RS : post FHIR-resources
+end group
+
+group "Registreren autorisatie"
+  Practitioner_Bob -> lokgrond : log in
+  Practitioner_Bob -> lokgrond : register consent (explicit or implicit)
+  lokgrond -> Custodian_Node : register authorization credential
+  Custodian_Node -> lokgrond : ok
+  Custodian_Node -> Actor_Node : sync <<authorization credential>>
+end group
+@enduml
