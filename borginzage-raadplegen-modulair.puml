@@ -1,0 +1,57 @@
+@startuml
+autonumber
+box Bronhouder #lightblue
+actor Practitioner_Bob
+participant lokale_grondslagregistratie as lokgrond
+participant Resource_Server as RS
+participant AAA_Proxy as proxy
+participant Custodian_Node
+end box
+
+box Afnemer #lightyellow
+participant Actor_Node
+participant data_client
+participant Viewer
+actor Practitioner_Alice
+end box
+
+group user authentication
+  Practitioner_Alice -> Viewer : Start
+  Viewer -> Actor_Node: Authn
+  Actor_Node -> Viewer : Authn challenge
+  Viewer -> Practitioner_Alice : Show QR-code
+  Practitioner_Alice -> Actor_Node: Sign authn
+  Actor_Node -> data_client : <<authn-contract>>
+end
+
+group get authorization records, endpoints and access tokens
+  data_client -> Actor_Node : get authorization records\n<<bsn, identifier Actor,\nidentifier purposeOfUse>>
+  Actor_Node -> data_client : <<authz credentials incl\nidentifiers Custodians and search url's>>
+  
+  loop FOR EACH Custodian
+    data_client -> Actor_Node : find FHIR endpoint <<identifer Custodian>>
+    Actor_Node -> data_client : <<FHIR endpoint Custodian>>
+    data_client -> Actor_Node : request access_token\n<<authz credential(s), authn-contract,\nidentifier purposeOfUse>>
+    Actor_Node -> Custodian_Node : request access token\n<<JWT-grant>>
+    Custodian_Node -> Actor_Node: <<access token>>
+    Actor_Node -> data_client : <<access token>>
+  end
+end
+
+group data retrievel
+  loop FOR EACH Custodian
+    loop FOR EACH search url
+      data_client -> proxy : request FHIR-resource\n<<access token>>
+      proxy -> Custodian_Node: validate token\n<<access token>>
+      Custodian_Node -> proxy: ok + <<authz credentials\nused in token>>
+      proxy -> proxy: apply access policy\n(e.g. search narrowing)\n<<authz credentials\nused in token>>
+      proxy -> RS: filtered get-requests
+      RS -> proxy: <<FHIR-resources>>
+      proxy -> data_client : <<FHIR resources\nof 1 search-url>>
+    end
+  end
+  data_client -> Viewer: <<FHIR resources\nof all custodians>>
+  Viewer -> Viewer: generate view
+  Viewer -> Practitioner_Alice : Show
+end
+@enduml
