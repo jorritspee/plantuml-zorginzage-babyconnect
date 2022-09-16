@@ -1,35 +1,48 @@
 @startuml
 autonumber
 box Bronhouder #lightblue
-actor Practitioner_Bob
-participant xis as epd
-participant convertor
-participant lokale_grondslagregistratie as lokgrond
-participant Resource_Server as RS
-participant AAA_Proxy as proxy
-participant Custodian_Node
+actor Zorgverlener_Bob
+participant Vastleg
+participant Opslag
+participant Extractie
+participant Conversie as convertor
+participant FHIR_service_provider as RS
+participant lokale_toestemmingenregistratie as lokgrond
+'participant AAA_Proxy as proxy'
+'participant lokale_identity_provider'
+'participant Autorisatie_server'
+'participant Authenticatie_server'
+'participant Proxy2'
+participant Nuts_node_van_bronhouder as Custodian_Node #red
 end box
 
+'participant landelijke_identity_provider'
+'participant rol_zib_matrix'
+
 box Afnemer #lightyellow
-participant Actor_Node
+participant Nuts_node_van_afnemer as Actor_Node #red
 participant data_client
 participant Viewer
-actor Practitioner_Alice
+actor Zorgverlener_Alice as Practitioner_Alice
 end box
 
 group "Prepareren data (niet specifiek voor Nuts)"
-  Practitioner_Bob -> epd : log in
-  Practitioner_Bob -> epd : register data
-  epd -> convertor: post data
+  Zorgverlener_Bob -> Vastleg : log in
+  Vastleg -> Opslag : register data
+  Extractie -> Opslag : query data
+  Opslag -> Extractie : data
+  Extractie -> convertor: post data
   convertor -> convertor: convert data to FHIR-resources
-  convertor -> RS : post FHIR-resources
+  convertor -> RS : create FHIR-resources
 end group
 
-group "Registreren autorisatie"
-  Practitioner_Bob -> lokgrond : log in
-  Practitioner_Bob -> lokgrond : register consent (explicit or implicit)
-  lokgrond -> Custodian_Node : register authorization credential
+group "Toestemming omzetten in Nuts-autorisatie"
+  'Zorgverlener_Bob -> Vastleg : log in'
+  'Vastleg -> lokgrond : register consent (expliciet of verondersteld)'
+  lokgrond -> Custodian_Node : geef id van afnemer
+  Custodian_Node -> lokgrond : id van afnemer
+  lokgrond -> Custodian_Node : aanmaken autorisatie-record\n(1 bsn, 1 afnemer,1 bronhouder,\n1 zorgepisode-id, id use case geboortezorg)
   Custodian_Node -> lokgrond : ok
-  Custodian_Node -> Actor_Node : sync <<authorization credential>>
+  Custodian_Node -> Actor_Node : sync <<autorisatie-record>>
 end group
 @enduml
