@@ -1,0 +1,89 @@
+@startuml
+autonumber
+box Bronhouder #lightblue
+'actor Zorgverlener_Bob'
+'participant Vastleg'
+'participant Opslag'
+'participant Extractie'
+'participant Conversie as convertor'
+participant FHIR_service_provider as RS
+'participant lokale_toestemmingenregistratie as lokgrond'
+participant Autorisatie_server
+participant Authenticatie_server
+participant AAA_Proxy_IAM_ESB as proxy
+participant Nuts_node_van_bronhouder as Custodian_Node #red
+end box
+
+participant landelijke_identity_provider
+participant rol_zib_matrix
+
+box Afnemer #lightyellow
+participant Nuts_node_van_afnemer as Actor_Node #red
+participant Raadpleeg_service_viewer as data_client 
+participant Viewer
+participant lokale_identity_provider
+participant xis
+participant IAM
+participant ADFS as AD
+actor Zorgverlener_Alice as Practitioner_Alice
+end box
+
+group user authentication IRMA
+  Practitioner_Alice -> xis: inlog
+  xis -> Viewer : sso <<zorgverlener-id,\nzorgverlener-rol, bsn>>
+  Viewer -> Actor_Node: Authn
+  Actor_Node -> Viewer : Authn challenge
+  Viewer -> Practitioner_Alice : Show QR-code
+  Practitioner_Alice -> Actor_Node: Sign authn
+  Actor_Node -> data_client : <<authn-contract>>
+end
+
+group user authentication local Active Directory
+  Practitioner_Alice -> AD: inlog
+  AD -> xis : sso <<zorgverlener-id,\nzorgverlener-rol>>
+  AD -> Viewer : sso <<zorgverlener-id,\nzorgverlener-rol, bsn>>
+  AD -> IAM : vraag authenticatie_contract aan
+  IAM -> IAM: maak authenticatie_contract aan
+  IAM -> data_client : <<authenticatie-contract>>
+  'Viewer -> Actor_Node: Authn'
+  'Actor_Node -> Viewer : Authn challenge'
+  'Viewer -> Practitioner_Alice : Show QR-code'
+  'Practitioner_Alice -> Actor_Node: Sign authn'
+  
+end
+
+group get authorization records, endpoints and access tokens
+  data_client -> Actor_Node : get authorization records\n<<bsn, is Afnemer, identifier use case geboortezorg>>
+  Actor_Node -> data_client : <<authz credentials incl\nidentifiers Bronhouder en pad naar episodeOfCare>>
+  
+  loop FOR EACH Bronhouder
+    data_client -> Actor_Node : find FHIR endpoint <<identifer Bronhouder>>
+    Actor_Node -> data_client : <<FHIR endpoint Bronhouder>>
+    data_client -> Actor_Node : request access_token\n<<autorisatie-record, authnenticatie-contract,\nidentifier use case geboortezorg>>
+    Actor_Node -> Custodian_Node : request access token\n<<JWT-grant>>
+    Custodian_Node -> Actor_Node: access token
+    Actor_Node -> data_client : access token
+  end
+end
+
+group data retrievel
+  loop FOR EACH Custodian
+    loop FOR EACH search url
+      data_client -> proxy : request FHIR-resource\n<<access token>>
+      proxy -> Custodian_Node: validate token <<access token>>
+      Custodian_Node -> proxy: ok (autorisatie-record, authenticatie_contract)
+      proxy -> Autorisatie_server: vraag autorisatie_regels
+      Autorisatie_server -> landelijke_identity_provider: vraag rol_zib_regels
+      landelijke_identity_provider -> Autorisatie_server: <<rol_zib_regels>>
+      Autorisatie_server -> proxy : <<autorisatie_regels>>
+      proxy -> proxy: apply access policy (e.g. search narrowing)
+      proxy -> RS: filtered get-requests
+      RS -> proxy: <<FHIR-resources>>
+      proxy -> data_client : <<FHIR resource(s)>>
+    end
+  end
+  data_client -> Viewer: <<all FHIR resources>>
+  Viewer -> Viewer: generate view
+  Viewer -> Practitioner_Alice : Show
+end
+@enduml
