@@ -1,0 +1,46 @@
+@startuml
+autonumber
+box Bronhouder #lightblue
+actor Zorgverlener_Bob
+participant Vastleg
+participant Opslag
+participant Extractie
+participant Conversie as convertor
+participant FHIR_service_provider as RS
+participant lokale_toestemmingenregistratie as lokgrond
+participant Nuts_node_van_bronhouder as Custodian_Node #red
+end box
+
+box "Afnemer/ Coördinerend Zorgverlener" #lightgreen
+participant Nuts_node_van_afnemer as Actor_Node #red
+participant lokale_toestemmingenregistratie as lokgrondafn
+participant data_client
+participant Viewer
+actor Zorgverlener_Alice as Practitioner_Alice
+end box
+
+group "Registreren toestemming-record"
+  Practitioner_Alice -> lokgrondafn: registreer toestemming
+  loop for each bronhouder-afnemer-paar
+    lokgrondafn -> Actor_Node : geef id van bronhouder
+    Actor_Node -> lokgrondafn : id van bronhouder
+    lokgrondafn -> Actor_Node : geef id van afnemer
+    Actor_Node -> lokgrondafn : id van afnemer
+    lokgrondafn -> Actor_Node: aanmaken toestemming-record\n(1 bsn, 1 afnemer,1 bronhouder,\nid use case geboortezorg)
+  end
+end group
+
+group "Distributie toestemming-record"
+   Actor_Node -> Custodian_Node: sync <<toestemming-record>>
+end group
+
+group "Toestemming-record omzetten in Nuts-autorisatie"
+  lokgrond -> Custodian_Node : search toestemming-record
+  lokgrond -> lokgrond: analyseer/ diff
+  lokgrond -> RS: zoek Patient, Condition,\nEpisodeOfCare <<bsn>>
+  RS -> lokgrond: EpisodeOfCare incl zorgepisode-id
+  lokgrond -> Custodian_Node : aanmaken autorisatie-record\n(1 bsn, 1 afnemer,1 bronhouder,\n1 zorgepisode-id, id use case geboortezorg)
+  Custodian_Node -> lokgrond : ok
+  Custodian_Node -> Actor_Node : sync <<autorisatie-record>>
+end group
+@enduml
