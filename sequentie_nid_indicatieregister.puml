@@ -1,0 +1,45 @@
+@startuml
+autonumber 1.1.1
+participant Menzis_ZK1 as ZK1
+participant LUA_runner as LUA
+participant Authz_service as authz
+participant filter as filter
+participant proxy_ciz as proxy
+participant CIZ as ciz
+group authz code & access token flow
+  ZK1 -> LUA : authz code request\n(without consent)\n
+  LUA -> LUA : generate scope/\naccess model
+  LUA -> authz : authz code request \n<access model>
+  authz -> ZK1 : <authz code>
+  ZK1 -> authz : request access token (JWT)\n<authz code>
+  ZK1 <-- authz : <access token>
+end
+group abonnement afsluiten
+  autonumber inc b
+  ZK1 -> filter : post gql mutation \nsubscription-request <access token>
+  filter -> filter: apply \naccess policy
+  filter -> proxy : post gql mutation \n<abonnee_org_id>
+  proxy -> ciz : post gql mutation \n<abonnee_org_id>
+  ciz --> ZK1 : <abonnement id>
+end
+group notificatie
+  autonumber inc b  
+  ciz -> ciz : CRUD-event
+  ciz -> ciz : selecteer \nzorgkantoor \nobv postcode
+  ciz -> LUA : authz code request <indicatieId, abonnee_org_id>
+  LUA -> LUA : select correct script \n<abonnee_org_id>
+  LUA -> LUA : generate access model \n<indicatieId>
+  LUA -> authz : authz code request \n<access model>
+  authz -> ZK1 : <authz code> 
+  ZK1 -> authz : request access token (JWT)\n<authz code>
+  ZK1 <-- authz : <access token>
+end
+group bevragen indicatieregister
+  autonumber inc b  
+  ZK1 -> filter : gql-request <access token>
+  filter -> filter: apply \naccess policy
+  filter -> proxy : gql-request 
+  proxy -> ciz : gql-request
+  ciz --> ZK1 : gql-response
+end
+@enduml
