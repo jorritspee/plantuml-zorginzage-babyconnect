@@ -1,6 +1,6 @@
 @startuml
 autonumber 1.1.1
-participant Menzis_ZK1 as ZK1
+participant Zorgkantoor_1 as ZK1
 participant LUA_runner as LUA
 participant Authz_service as authz
 participant filter as filter
