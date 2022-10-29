@@ -1,0 +1,58 @@
+@startuml
+autonumber 1.1.1
+participant Zorgaanbieder_1 as ZA1
+participant LUA_runner as LUA
+participant Authz_service as authz
+participant filter as filter
+participant proxy_X as proxy
+participant Zorgkantoor_1 as ZK_1
+participant CIZ as ciz
+group authz code & access token flow
+  ZA1 -> LUA : authz code request\n(without consent)\n
+  LUA -> LUA : generate scope/\naccess model
+  LUA -> authz : authz code request \n<access model>
+  authz -> ZA1 : <authz code>
+  ZA1 -> authz : request access token (JWT)\n<authz code>
+  ZA1 <-- authz : <access token>
+end
+group abonnement afsluiten
+  autonumber inc b
+  ZA1 -> filter : post gql mutation \nsubscription-request <access token>
+  filter -> filter: apply \naccess policy
+  filter -> proxy : post gql mutation \n<abonnee_org_id>
+  proxy -> ZK_1 : post gql mutation \n<abonnee_org_id>
+  ZK_1 --> ZA1 : <abonnement id>
+end
+group notificatie indicatie
+  autonumber inc b  
+  ZK_1 -> ZK_1 : CRUD-event \nindicatie
+  ZK_1 -> ZK_1 : selecteer \nzorgaanbieder == abonnee_org_id
+  ZK_1 -> LUA : authz code indicatie request <indicatieId, abonnee_org_id>
+  LUA -> LUA : select correct script \n<abonnee_org_id>
+  LUA -> LUA : generate access model \n<indicatieId>
+  LUA -> authz : authz code request \n<access model>
+  authz -> ZA1 : <authz code indicatie> 
+  ZA1 -> authz : request access token indicatie (JWT)\n<authz code>
+  ZA1 <-- authz : <access token>
+end
+group notificatie bemiddeling
+  autonumber inc b  
+  ZK_1 -> ZK_1 : CRUD-event \nbemiddeling
+  ZK_1 -> ZK_1 : selecteer \nzorgaanbieder == abonnee_org_id
+  ZK_1 -> LUA : authz code bemiddeling request <indicatieId, abonnee_org_id>
+  LUA -> LUA : select correct script \n<abonnee_org_id>
+  LUA -> LUA : generate access model \n<indicatieId>
+  LUA -> authz : authz code request \n<access model>
+  authz -> ZA1 : <authz code bemiddeling> 
+  ZA1 -> authz : request access token bemiddeling (JWT)\n<authz code>
+  ZA1 <-- authz : <access token>
+end
+group bevragen indicatieregister
+  autonumber inc b  
+  ZA1 -> filter : gql-request <access token indicatie>
+  filter -> filter: apply \naccess policy
+  filter -> proxy : gql-request 
+  proxy -> ciz : gql-request
+  ciz --> ZA1 : gql-response
+end
+@enduml
