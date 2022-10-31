@@ -1,6 +1,7 @@
 @startuml
 autonumber 1.1.1
 participant "Afnemer \nindicatiegegevens \nmet abo" as ZK1
+participant proxy_afn as proxy_afn
 participant LUA_runner as LUA
 participant Authz_service as authz
 participant filter as filter
@@ -34,8 +35,10 @@ group notificatie
   ciz -> LUA : authz code request <indicatieId, abonnee_org_id>
   LUA -> LUA : select correct script \n<abonnee_org_id>
   LUA -> LUA : generate access model \n<indicatieId>
-  LUA -> authz : authz code request \n<access model>
-  authz -> ZK1 : <authz code> 
+  LUA -> authz : authz code request \n<access model, nid_client_id>
+  authz -> authz : retrieve proxy-url \nof client <nid_client_id>
+  authz -> proxy_afn : <authz code indicatie>
+  proxy_afn -> ZK1 : <authz code indicatie> 
   ZK1 -> authz : request access token (JWT)\n<authz code>
   ZK1 <-- authz : <access token>
 end
