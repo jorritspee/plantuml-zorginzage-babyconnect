@@ -1,6 +1,6 @@
 @startuml
 autonumber 1.1.1
-participant Zorgkantoor_1 as ZK1
+participant "Afnemer \nindicatiegegevens \nmet abo" as ZK1
 participant LUA_runner as LUA
 participant Authz_service as authz
 participant filter as filter
@@ -17,6 +17,7 @@ end
 group abonnement afsluiten
   autonumber inc b
   ZK1 -> filter : post gql mutation \nsubscription-request <access token>
+  filter -> filter: retrieve abonnee_org_id \nfrom access token
   filter -> filter: apply \naccess policy
   filter -> proxy : post gql mutation \n<abonnee_org_id>
   proxy -> ciz : post gql mutation \n<abonnee_org_id>
@@ -25,7 +26,11 @@ end
 group notificatie
   autonumber inc b  
   ciz -> ciz : CRUD-event
-  ciz -> ciz : selecteer \nzorgkantoor \nobv postcode
+  alt zorgkantoor 
+    ciz -> ciz : zorgkantoor: selecteer \nzorgkantoor \nobv postcode
+  else zorgaanbieder
+    ciz -> ciz : zorgaanbieder: selecteer \nzorgaanbieder genoemd \nin 'instelling-voorkeur' \nin indicatie (to do)
+  end
   ciz -> LUA : authz code request <indicatieId, abonnee_org_id>
   LUA -> LUA : select correct script \n<abonnee_org_id>
   LUA -> LUA : generate access model \n<indicatieId>
@@ -37,9 +42,10 @@ end
 group bevragen indicatieregister
   autonumber inc b  
   ZK1 -> filter : gql-request <access token>
+  filter -> filter: retrieve abonnee_org_id \nfrom access token
   filter -> filter: apply \naccess policy
-  filter -> proxy : gql-request 
-  proxy -> ciz : gql-request
+  filter -> proxy : gql-request <abonnee_org_id (to do)>
+  proxy -> ciz : gql-request <abonnee_org_id (to do)>
   ciz --> ZK1 : gql-response
 end
 @enduml
