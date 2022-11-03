@@ -1,14 +1,18 @@
 @startuml
 autonumber 1.1.1
-participant "Afnemer \nindicatiegegevens \nmet abo" as ZK1
-participant proxy_afn as proxy_afn
-participant LUA_runner as LUA
-participant Authz_service as authz
-participant filter as filter
-participant proxy_ciz as proxy
+box afnemer #lightyellow
+participant "Afnemer \nindicatiegegevens \nmet abo" as ZK1 
+participant proxy_afn as proxy_afn #lightpink
+end box
+box bronhouder #lightblue
+participant LUA_runner as LUA #lightpink
+participant Authz_service as authz #lightpink
+participant filter as filter #lightpink
+participant proxy_ciz as proxy #lightpink
 participant CIZ as ciz
+end box
 group authz code & access token flow
-  ZK1 -> LUA : authz code request\n(without consent)\n
+  ZK1 -> LUA : authz code request\n(without consent)\n VRAAG: GEEN RESPONSE/RETURN?
   LUA -> LUA : generate scope/\naccess model
   LUA -> authz : authz code request \n<access model>
   authz -> ZK1 : <authz code>
@@ -17,14 +21,15 @@ group authz code & access token flow
 end
 group abonnement afsluiten
   autonumber inc b
-  ZK1 -> filter : post gql mutation \nsubscription-request <access token>
+  ZK1 -> filter : post gql mutation \nsubscription-request <access token> VRAAG: GEEN RESPONSE/RETURN?
   filter -> filter: retrieve abonnee_org_id \nfrom access token
   filter -> filter: apply \naccess policy
   filter -> proxy : post gql mutation \n<abonnee_org_id>
   proxy -> ciz : post gql mutation \n<abonnee_org_id>
-  ciz --> ZK1 : <abonnement id>
+  ciz --> proxy_afn : <abonnement id> VRAAG: VIA PROXY OF NIET?
+  proxy_afn --> ZK1 : <abonnement id>
 end
-group notificatie
+group notificatie/autorisatie
   autonumber inc b  
   ciz -> ciz : CRUD-event
   alt zorgkantoor 
@@ -40,12 +45,12 @@ group notificatie
   authz -> proxy_afn : <authz code indicatie>
   proxy_afn -> ZK1 : <authz code indicatie> 
   ZK1 -> authz : request access token (JWT)\n<authz code>
-  ZK1 <-- authz : <access token>
+  ZK1 <-- authz : <access token> 
 end
 group bevragen indicatieregister
   autonumber inc b  
   ZK1 -> filter : gql-request <access token>
-  filter -> filter: retrieve abonnee_org_id \nfrom access token
+  filter -> filter: retrieve abonnee_org_id/ afnemer_org_id \nfrom access token
   filter -> filter: apply \naccess policy
   filter -> proxy : gql-request <abonnee_org_id (to do)>
   proxy -> ciz : gql-request <abonnee_org_id (to do)>
