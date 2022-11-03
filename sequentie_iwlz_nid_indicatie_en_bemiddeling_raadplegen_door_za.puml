@@ -1,13 +1,23 @@
 @startuml
 autonumber 1.1.1
-participant Zorgaanbieder_1 as ZA1
-participant proxy_afn as proxy_afn
-participant LUA_runner as LUA
-participant Authz_service as authz
-participant filter as filter
-participant proxy_bron as proxy
-participant Zorgkantoor_1 as ZK_1
-participant CIZ as ciz
+box afnemer #lightyellow
+  participant Zorgaanbieder_1 as ZA1
+  participant proxy_afn as proxy_afn #lightpink
+end box
+box bronhouder #lightblue
+  participant LUA_runner as LUA #lightpink
+  participant Authz_service as authz #lightpink
+  participant filter as filter #lightpink
+  participant proxy_bron as proxy #lightpink
+  participant Zorgkantoor_1 as ZK_1 
+end box
+box bronhouder 2
+  participant LUA_runner_ciz as LUA_ciz #lightpink
+  participant authz_service_ciz as authz_ciz #lightpink
+  participant filter_ciz as filter_ciz #lightpink
+  participant proxy_ciz as proxy_ciz #lightpink
+  participant CIZ as ciz
+end box
 group authz code & access token flow
   ZA1 -> LUA : authz code request\n(without consent)\n
   LUA -> LUA : generate scope/\naccess model
@@ -24,26 +34,24 @@ group abonnement bemiddelingsregister afsluiten
   proxy -> ZK_1 : post gql mutation \n<abonnee_org_id>
   ZK_1 --> ZA1 : <abonnement id>
 end
-group autoriseer zorgaanbieder voor indicatie
-  autonumber inc b  
-  ZK_1 -> ZK_1 : CRUD-event \nindicatie
-  ZK_1 -> ZK_1 : selecteer \nzorgaanbieder == abonnee_org_id
-  ZK_1 -> LUA : authz code indicatieregister request <indicatieId, abonnee_org_id>
-  LUA -> LUA : select correct script \n<abonnee_org_id>
-  LUA -> LUA : retrieve nid_client_id \n<abonnee_org_id>
-  LUA -> LUA : generate access model \n<indicatieId>
-  LUA -> authz : authz code request \n<access model, nid_client_id>
-  authz -> authz : retrieve proxy-url \nof client <nid_client_id>
-  authz -> proxy_afn : <authz code indicatie>
-  proxy_afn -> ZA1 : <authz code indicatie> 
-  ZA1 -> authz : request access token indicatie (JWT)\n<authz code>
-  ZA1 <-- authz : <access token>
-end
-group notificatie bemiddeling
-  autonumber inc b  
+  
+group notificeren/ autoriseren za 
+  autonumber inc b
   ZK_1 -> ZK_1 : CRUD-event \nbemiddeling
   ZK_1 -> ZK_1 : selecteer \nzorgaanbieder == abonnee_org_id
-  ZK_1 -> LUA : authz code bemiddeling request <indicatieId, abonnee_org_id>
+  alt indicatie
+    ZK_1 -> LUA_ciz : authz code \nindicatieregister \nrequest <indicatieId, \nabonnee_org_id>
+    LUA_ciz -> LUA_ciz : select correct script \n<abonnee_org_id>
+    LUA_ciz -> LUA_ciz : retrieve nid_client_id \n<abonnee_org_id>
+    LUA_ciz -> LUA_ciz : generate access model \n<indicatieId>
+    LUA_ciz -> authz_ciz : authz code request \n<access model, nid_client_id>
+    authz_ciz -> authz_ciz : retrieve proxy-url \nof client <nid_client_id>
+    authz_ciz -> proxy_afn : <authz code indicatie>
+    proxy_afn -> ZA1 : <authz code indicatie> 
+    ZA1 -> authz_ciz : request access token indicatie (JWT)\n<authz code>
+    ZA1 <-- authz_ciz : <access token indicatie>
+  else bemiddeling
+    ZK_1 -> LUA : authz code bemiddeling request <indicatieId, abonnee_org_id>
   LUA -> LUA : select correct script \n<abonnee_org_id>
   LUA -> LUA : retrieve nid_client_id \n<abonnee_org_id>
   LUA -> LUA : generate access model \n<indicatieId>
@@ -52,14 +60,15 @@ group notificatie bemiddeling
   authz -> proxy_afn : <authz code indicatie>
   proxy_afn -> ZA1 : <authz code indicatie> 
   ZA1 -> authz : request access token bemiddeling (JWT)\n<authz code>
-  ZA1 <-- authz : <access token>
+  ZA1 <-- authz : <access token bemiddeling>
+  end
 end
 group bevragen indicatieregister
   autonumber inc b  
-  ZA1 -> filter : gql-request <access token indicatie>
-  filter -> filter: apply \naccess policy
-  filter -> proxy : gql-request 
-  proxy -> ciz : gql-request
+  ZA1 -> filter_ciz : gql-request <access token indicatie>
+  filter_ciz -> filter_ciz: apply \naccess policy
+  filter_ciz -> proxy_ciz : gql-request 
+  proxy_ciz -> ciz : gql-request
   ciz --> ZA1 : gql-response
 end
 group bevragen bemiddelingsregister
