@@ -1,0 +1,48 @@
+@startuml
+autonumber 1.1.1
+box afnemer #lightyellow
+participant "Afnemer \nindicatiegegevens \nmet abo" as ZK1 
+participant nid_proxy_afn as proxy_afn #lightpink
+end box
+box bronhouder #lightblue
+participant nid_LUA_runner as LUA #lightpink
+participant nid_Authz_service as authz #lightpink
+participant nid_filter as filter #lightpink
+participant nid_proxy_ciz as proxy #lightpink
+participant ciz_Netwerkpunt as ciz #lightgreen
+participant ciz_Bronsysteem as backoffice
+end box
+group notificatie/autorisatie niet medmij
+  autonumber inc b
+  backoffice -> backoffice : CRUD-event
+  /'alt zorgkantoor '/
+  backoffice -> backoffice : zorgkantoor: selecteer \nzorgkantoor \nobv postcode
+  /'else zorgaanbieder
+      backoffice -> backoffice : zorgaanbieder: selecteer \nzorgaanbieder genoemd \nin 'instelling-voorkeur' \nin indicatie (to do)'/
+    /'end'/  
+  backoffice -> ciz : notification
+  activate backoffice
+    ciz -> LUA : authz code request <indicatie_id, abonnee_org_id>
+    activate LUA
+      LUA -> LUA : select correct script \n<abonnee_org_id>
+      LUA -> LUA : execute script to \ngenerate access model \n<indicatieId>
+      LUA -> authz : authz code request \n<access model, nid_client_id>
+    deactivate LUA
+    authz -> authz : retrieve proxy-url \nof client <nid_client_id>
+    authz -> proxy_afn : <authz code indicatie>
+    proxy_afn -> ZK1 : <authz code indicatie>
+    ZK1 --> backoffice : response authz code request
+  deactivate backoffice
+  ZK1 -> authz : request access token (JWT)\n<authz code>
+  ZK1 <-- authz : <access token> 
+end
+group bevragen indicatieregister
+  autonumber inc b  
+  ZK1 -> filter : gql-request <access token>
+  filter -> filter: retrieve abonnee_org_id/ afnemer_org_id \nfrom access token
+  filter -> filter: apply \naccess policy
+  filter -> proxy : gql-request <abonnee_org_id (to do)>
+  proxy -> ciz : gql-request <abonnee_org_id (to do)>
+  ciz --> ZK1 : gql-response
+end
+@enduml
