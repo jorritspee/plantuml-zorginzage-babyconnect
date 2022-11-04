@@ -1,0 +1,47 @@
+@startuml
+autonumber 1.1.1
+box gegevensregisseur #lightyellow
+actor Burger
+participant DVP as dvp
+end box
+box bronhouder #lightblue
+participant drimpy_DVA as dva #darkorange
+participant nid_DVA_proxy as dva_proxy #lightpink
+participant nid_LUA_runner as LUA #lightpink
+participant nid_Authz_service as authz #lightpink
+participant nid_filter as filter #lightpink
+participant nid_proxy_ciz as proxy #lightpink
+participant ciz_Netwerkpunt as ciz #lightgreen
+participant ciz_Bronsysteem as backoffice
+end box
+group notificatie WEL medmij
+  backoffice -> backoffice : CRUD-event
+  backoffice -> ciz : notification
+  activate backoffice
+    ciz -> dva_proxy : notification <abonnement_id, abonnee_org_id>
+    dva_proxy -> dva : notification <abonnement_id>
+    dva --> backoffice : response notification request
+  deactivate backoffice
+  dva -> dva : select correct dvp <abonnement_id>
+  dva -> dvp : notification to pgo
+end
+group verzamelen indicatie
+  autonumber inc b  
+  dvp -> dva : verzamel \ngegevensdienst iWlz
+  dva -> LUA : auth code request
+  LUA --> dva : <authz code>
+  activate LUA
+      LUA -> LUA : select correct script \n<abonnee_org_id>
+      LUA -> LUA : execute script to \ngenerate access model \n<indicatieId>
+      LUA -> authz : authz code request \n<access model, nid_client_id>
+    deactivate LUA
+  dva -> authz : access token request <auth code>
+  authz --> dva : <access token> 
+  dva -> filter : gql-request <access token>
+  filter -> filter: retrieve abonnee_org_id/ afnemer_org_id \nfrom access token
+  filter -> filter: apply \naccess policy
+  filter -> proxy : gql-request <abonnee_org_id (to do)>
+  proxy -> ciz : gql-request <abonnee_org_id (to do)>
+  ciz --> dva : gql-response
+end
+@enduml
