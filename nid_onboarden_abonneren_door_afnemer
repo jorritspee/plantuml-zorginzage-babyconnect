@@ -1,0 +1,56 @@
+@startuml
+autonumber 1.1.1
+box afnemer #lightyellow
+participant "Afnemer \nindicatiegegevens \nmet abo" as ZK1 
+participant nid_proxy_afn as proxy_afn #lightpink
+participant "vecozo_beheer\nomgeving" as bo #darkorange
+end box
+box bronhouder #lightblue
+participant nid_LUA_runner as LUA #lightpink
+participant nid_Authz_service as authz #lightpink
+participant nid_filter as filter #lightpink
+participant nid_proxy_ciz as proxy #lightpink
+participant ciz_Netwerkpunt as ciz #lightgreen
+participant ciz_Bronsysteem as backoffice
+end box
+group onboarding
+  /'group code and token flow
+    bo -> LUA : authz code request\n(without consent)\n VRAAG: GEEN RESPONSE/RETURN?
+    LUA -> LUA : generate scope/\naccess model
+    LUA -> authz : authz code request \n<access model>
+    authz -> bo : <authz code>
+    bo -> authz : request access token (JWT)\n<authz code>
+    bo <-- authz : <access token>
+  end group'/
+  bo -> proxy : post gql mutation \nsubscription-request <UZOVI-code>
+  proxy -> proxy : mTLS, check if \n TLS-client == netwerkbeheerder
+  /'filter -> filter: retrieve abonnee_org_id \nfrom access token
+  filter -> filter: apply \naccess policy
+  filter -> proxy : post gql mutation \n<abonnee_org_id>'/
+  proxy -> ciz : post gql mutation \n<abonnee_org_id>
+  ciz -> backoffice : REST-post gql mutation \n<abonnee_org_id>
+  backoffice --> ciz : <abonnement id>
+  ciz --> proxy : <abonnement id>
+  proxy --> bo : <abonnement id>
+  /'bo --> proxy_afn : <abonnement id> VRAAG: VIA PROXY OF NIET?
+  proxy_afn --> ZK1 : <abonnement id>'/
+end group
+group authz code & access token flow
+  ZK1 -> LUA : authz code request\n(without consent)\n VRAAG: GEEN RESPONSE/RETURN?
+  LUA -> LUA : generate scope/\naccess model
+  LUA -> authz : authz code request \n<access model>
+  authz -> ZK1 : <authz code>
+  ZK1 -> authz : request access token (JWT)\n<authz code>
+  ZK1 <-- authz : <access token>
+end
+group abonnement afsluiten door afnemer
+  autonumber inc b
+  ZK1 -> filter : post gql mutation \nsubscription-request <access token> VRAAG: GEEN RESPONSE/RETURN?
+  filter -> filter: retrieve abonnee_org_id \nfrom access token
+  filter -> filter: apply \naccess policy
+  filter -> proxy : post gql mutation \n<abonnee_org_id>
+  proxy -> ciz : post gql mutation \n<abonnee_org_id>
+  ciz --> proxy_afn : <abonnement id> VRAAG: VIA PROXY OF NIET?
+  proxy_afn --> ZK1 : <abonnement id>
+end
+@enduml
