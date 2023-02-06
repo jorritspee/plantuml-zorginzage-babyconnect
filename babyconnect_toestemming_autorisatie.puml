@@ -1,0 +1,61 @@
+@startuml
+autonumber 1.1
+box Bronhouder #lightblue
+  actor zorgverlener 
+  participant xis
+  participant fhir_server as fhir
+  participant toestemming_app as toes
+  participant toestemming_db as toes_db
+  participant nuts_node as nuts
+end box
+box Afnemer
+  participant nuts_node_afn as nuts_afn
+end box
+zorgverlener -> xis: login
+
+group sso
+  autonumber inc a
+  xis -> toes: sso/ integratie \n<bsn, local id Bronhouder>
+end group
+
+group create toestemming
+  autonumber inc a
+  toes -> toes: aanmaken toestemming
+  toes -> toes_db: opslaan toestemming
+end group
+
+group create autorisatie
+  group get Bronhouder
+    autonumber inc a
+    toes -> nuts: search DID Bronhouder \n(name, city)
+    nuts --> toes: <DID Bronhouder>
+  end group
+
+  group get Afnemer
+    autonumber inc a
+    toes -> toes: select Afnemer (local id)
+    toes -> nuts: search DID Afnemer
+    nuts --> toes: <DID Afnemer>
+  end group
+
+  group get EpisodeOfCare
+    autonumber inc a
+    toes -> toes: select EpisodeOfCare (local id)
+    toes -> fhir: search EpisodeOfCare <bsn>
+    fhir --> toes: <EpisodeOfCare-path>
+    nuts --> toes: <DID Afnemer>
+  end group
+
+  group create authz credential
+    autonumber inc a
+    toes -> nuts: create auth_record \n<bsn, did bronhouder, did afnemer, \nuse-case 'zorginzage-geboortezorg', \nEpisodeOfCare-path>
+    nuts --> toes: ok
+  end group
+end group
+
+group sync authz credential
+  autonumber inc a
+  nuts -> nuts_afn: sync authz credential
+  nuts_afn --> nuts: ok
+end group
+@enduml
