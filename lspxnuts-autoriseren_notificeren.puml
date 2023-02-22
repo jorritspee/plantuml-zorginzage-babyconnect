@@ -1,0 +1,72 @@
+@startuml
+autonumber 1.1
+
+title "Autoriseren en notificeren"
+
+skinparam BoxPadding 50
+box "Sender (Nuts-deelnemer" #OrangeRed
+  participant "Sender System" as Sender
+  participant SenderNode
+end box
+box "VZVZ" #LightGray
+  participant ReceiverNode
+  participant "Proxy" as proxy
+  participant "RB ZA-in" as rbin order 20
+  participant "ZORG-AB" as zab order 19
+  participant "Adressering Server" as adds order 46
+  participant "RB VnC" as vnc order 50
+  participant "Autorisatie Server ZA" as autd order 60
+end box
+
+box "Receiver (LSP deelnemer)" #LightBlue
+participant "Receiver System (XIS)" as rx1 order 70
+end box
+
+
+group "authorization registration"
+  Sender -> SenderNode: search DID of Receiver Org (name, city)
+  SenderNode --> Sender: <<DID of Receiver>>
+  Sender -> SenderNode: Register bgz authorization record \n(sender DID, receiver DID, bsn, PurposeOfUse "BgZ-sender")
+  SenderNode --> Sender: Ok
+  SenderNode -> ReceiverNode: sync authorizations
+end
+
+group "notify"
+  autonumber inc a
+  Sender -> SenderNode: Find Task notify endpoint (receiver id)
+  SenderNode -> Sender: <<Endpoint>>
+  Sender -> SenderNode: Request accessToken (no params because public endpoint)
+  SenderNode -> ReceiverNode:Request accessToken <<jwt-grant>>
+  ReceiverNode -> SenderNode: <<accessToken incl DID sender>>
+  SenderNode -> Sender: <<accessToken incl DID sender>>
+  Sender -> proxy: Notify
+  activate Sender
+  proxy -> ReceiverNode: Validate <<accessToken>>
+  ReceiverNode --> proxy: Ok
+  
+  proxy -> zab: Verkrijg URA \nvan Receiver (DID)
+  zab --> proxy: <<URA>>
+  proxy -> adds: getRoutingInfo (URA, interaction-id-set)
+  adds --> proxy: (interaction-id, appID-set)-set
+  
+  proxy -> autd: get access token
+  autd --> proxy: <<access token>>
+  
+  proxy -> vnc: create Task (Task.input bevat query_strings + consent_token) + access_token_AORTA
+  vnc -> rx1: create Task + access_token_AORTA
+
+  alt Indien certificaatgegevens nog niet beschikbaar
+    rx1 -> autd: Ophalen metadata
+    autd --> rx1: metadata
+    rx1 -> autd: Ophalen certificaatgegevens
+    autd --> rx1: JWKS
+  end
+
+  rx1 --> vnc: 200
+  vnc --> rbin: 200
+  rbin --> proxy: 200
+  proxy --> Sender: 200 Ok
+  deactivate Sender
+end  
+
+@enduml
