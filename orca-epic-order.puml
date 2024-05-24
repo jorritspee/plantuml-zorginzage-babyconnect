@@ -5,15 +5,20 @@ skinparam legendBackgroundColor none
 
 title High-level Sequence Diagram Antonius order
 
+legend
+    #LightBlue: hosted by Antonius hospital
+    #LightPink: hosted by Zorg bij jou (during PoC/pilot)
+end legend
+
 box "Local Care Organization" #Lavender
     actor LocalCP as "Care Professional"
-    participant LocalXIS as "Epic"
-    participant LocalFhir as "Epic-on-FHIR"
-    participant LocalOrca as "API Gateway/ Orca"
+    participant LocalXIS as "Epic" #LightBlue
+    participant LocalFhir as "Epic-on-FHIR" #LightBlue
+    participant LocalOrca as "API Gateway/ Orca" #LightPink
 end box
 
 box "Remote Care Organization" #Lavender
-    participant RemoteXIS as "Remote XIS"
+    participant RemoteXIS as "Remote XIS" #LightPink
     actor RemoteCP as "Care Professional"
 end box
 
