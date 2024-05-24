@@ -1,0 +1,35 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+autonumber
+skinparam legendBackgroundColor none
+
+title High-level Sequence Diagram Antonius order
+
+box "Local Care Organization" #Lavender
+    actor LocalCP as "Care Professional"
+    participant LocalXIS as "Epic"
+    participant LocalFhir as "Epic-on-FHIR"
+    participant LocalOrca as "API Gateway/ Orca"
+end box
+
+box "Remote Care Organization" #Lavender
+    participant RemoteXIS as "Remote XIS"
+    actor RemoteCP as "Care Professional"
+end box
+
+group Epic
+    LocalCP -> LocalXIS : Register order
+    LocalXIS -> LocalFhir: POST ServiceRequest
+    LocalXIS -> LocalFhir: POST Task (status = requested)
+    LocalXIS -> LocalOrca: SEND HL7V2 ORM/SIU
+end group
+
+group API Gateway/ Orca
+    LocalOrca -> LocalOrca: retrieve data from ORM \n(patient identifier, ...)
+    LocalOrca <-> LocalFhir: internal authn & authz \n(SMART-on-FHIR)
+    LocalOrca -> LocalFhir: GET Task
+    LocalOrca -> LocalFhir: GET ServiceRequest
+    LocalOrca -> LocalOrca: inspect Task, \nServiceRequest
+    LocalOrca <-> RemoteXIS: external authn & authz \n(eIDAS2)
+    LocalOrca -> RemoteXIS: Send notification
+end group
